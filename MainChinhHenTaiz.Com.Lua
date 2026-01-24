@@ -6,13 +6,16 @@ getgenv().Config = {
     Range = 25,
     Speed = 16,
     Noclip = false,
-    ID = nil
+    SavedID = nil,
+    AttackSpeed = 0.1,
+    AutoHit = false, -- Thêm Kill Aura
+    AutoHitInterval = 1 -- Thêm Interval cho Auto Hit
 }
 
--- Rayfield Window
+-- Khởi tạo Rayfield Window
 local Window = Rayfield:CreateWindow({
-    Name = "QuanLorZ",
-    LoadingTitle = "Chờ  tí đi thg l",
+    Name = "QUANLORZ",
+    LoadingTitle = "đang khởi động...",
     LoadingSubtitle = "by Quan",
     ConfigurationSaving = {
         Enabled = false
@@ -27,22 +30,44 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 4483362458)
 
 -- SECTION: TỰ ĐỘNG
-local AutoSection = MainTab:CreateSection("Main Chính Hiền Tài")
+local AutoSection = MainTab:CreateSection("Main")
 
--- Nút Kill Aura
+-- Toggle Auto Attack
 local FarmToggle = MainTab:CreateToggle({
-    Name = "Kill Aura",
+    Name = "kill Aura",
     CurrentValue = false,
     Flag = "FarmToggle",
     Callback = function(Value)
         getgenv().Config.Farm = Value
+        Rayfield:Notify({
+            Title = "Auto Farm",
+            Content = Value and "Đã bật Kill Aura" or "Đã tắt Kill Aura",
+            Duration = 2,
+            Image = 4483362458
+        })
     end,
 })
 
--- Nhập Giá trị
+-- Toggle Auto Hit
+local AutoHitToggle = MainTab:CreateToggle({
+    Name = "Auto Sửa cửa",
+    CurrentValue = false,
+    Flag = "AutoHitToggle",
+    Callback = function(Value)
+        getgenv().Config.AutoHit = Value
+        Rayfield:Notify({
+            Title = "Auto Sửa Cửa",
+            Content = Value and "Đã bật Auto Sửa Cuaqr" or "Đã tắt Auto Sửa Cửa",
+            Duration = 2,
+            Image = 4483362458
+        })
+    end,
+})
+
+-- Input Range
 local RangeInput = MainTab:CreateInput({
     Name = "Tầm Đánh",
-    PlaceholderText = "Nhập số",
+    PlaceholderText = "Nhập số...",
     RemoveTextAfterFocusLost = false,
     Callback = function(Value)
         local num = tonumber(Value)
@@ -64,21 +89,19 @@ local RangeInput = MainTab:CreateInput({
         end
     end,
 })
-
--- Set giá trị mặc định
 RangeInput:Set("25")
 
--- Input Speed 
+-- Input Speed
 local SpeedInput = MainTab:CreateInput({
-    Name = "Speed",
-    PlaceholderText = "Nhập số",
+    Name = "Tốc Độ Di Chuyển",
+    PlaceholderText = "Nhập số...",
     RemoveTextAfterFocusLost = false,
     Callback = function(Value)
         local num = tonumber(Value)
         if num and num >= 16 and num <= 100 then
             getgenv().Config.Speed = num
             Rayfield:Notify({
-                Title = "Speed",
+                Title = "Tốc Độ",
                 Content = "Đã đặt tốc độ: " .. num,
                 Duration = 2,
                 Image = 4483362458
@@ -93,16 +116,68 @@ local SpeedInput = MainTab:CreateInput({
         end
     end,
 })
-
--- Set giá trị mặc định
 SpeedInput:Set("16")
 
--- SECTION: Nhặt
-local QuickSection = MainTab:CreateSection("Bay & Nhặt")
+-- Input Attack Speed
+local AttackSpeedInput = MainTab:CreateInput({
+    Name = "Tốc Độ Tấn Công",
+    PlaceholderText = "0.1",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num and num > 0 and num <= 1 then
+            getgenv().Config.AttackSpeed = num
+            Rayfield:Notify({
+                Title = "Tốc Độ Tấn Công",
+                Content = "Đã đặt: " .. num .. " giây",
+                Duration = 2,
+                Image = 4483362458
+            })
+        else
+            Rayfield:Notify({
+                Title = "Lỗi",
+                Content = "Vui lòng nhập số từ 0.01 đến 1",
+                Duration = 3,
+                Image = 4483362458
+            })
+        end
+    end,
+})
+AttackSpeedInput:Set("0.1")
 
--- Button Nhặt Nhanh
+-- Input Auto Hit Interval
+local AutoHitIntervalInput = MainTab:CreateInput({
+    Name = "Auto Hit Interval",
+    PlaceholderText = "1",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num and num > 0 and num <= 5 then
+            getgenv().Config.AutoHitInterval = num
+            Rayfield:Notify({
+                Title = "Tốc Độ Sửa cửa",
+                Content = "Đã đặt: " .. num .. " giây",
+                Duration = 2,
+                Image = 4483362458
+            })
+        else
+            Rayfield:Notify({
+                Title = "Lỗi",
+                Content = "Vui lòng nhập số từ 0.1 đến 5",
+                Duration = 3,
+                Image = 4483362458
+            })
+        end
+    end,
+})
+AutoHitIntervalInput:Set("1")
+
+-- SECTION: instan click
+local QuickSection = MainTab:CreateSection("Ông Chồng Bất Lực :V")
+
+-- Button Bỏ qua thời gian chờ
 MainTab:CreateButton({
-    Name = "Bypass nhặt",
+    Name = "Instant Click",
     Callback = function()
         for _, v in pairs(workspace:GetDescendants()) do
             if v:IsA("ProximityPrompt") then
@@ -111,8 +186,8 @@ MainTab:CreateButton({
             end
         end
         Rayfield:Notify({
-            Title = "Nhặt Nhanh",
-            Content = "Đã kích hoạt Bypass nhặt!",
+            Title = "Instant Click",
+            Content = "Đã kích Instant Click!",
             Duration = 2,
             Image = 4483362458
         })
@@ -133,121 +208,162 @@ MainTab:CreateButton({
     end,
 })
 
--- SECTION: KHÁC
+-- SECTION: Other
 MainTab:CreateSection("Other")
 
 -- Toggle Noclip
 local NoclipToggle = MainTab:CreateToggle({
-    Name = " Noclip",
+    Name = "Noclip",
     CurrentValue = false,
     Flag = "NoclipToggle",
     Callback = function(Value)
         getgenv().Config.Noclip = Value
-        if Value then
-            Rayfield:Notify({
-                Title = "Noclip",
-                Content = "Đã bật Noclip!",
-                Duration = 2,
-                Image = 4483362458
-            })
-        else
-            Rayfield:Notify({
-                Title = "Noclip",
-                Content = "Đã tắt Noclip!",
-                Duration = 2,
-                Image = 4483362458
-            })
-        end
+        Rayfield:Notify({
+            Title = "Noclip",
+            Content = Value and "Noclip!" or "Đã tắt Noclip!",
+            Duration = 2,
+            Image = 4483362458
+        })
     end,
 })
 
 -- TAB THÔNG TIN
 local InfoTab = Window:CreateTab("Info", 4483362458)
 
--- Paragraph thông tin
 InfoTab:CreateParagraph({
-    Title = "NhinDeoMaMay",
-    Content = "Nhìn Nhìn Cái Địt Mẹ Mày chứ mà nhìn"
+    Title = "MainChinhHentai",
+    Content = "Đánh quái 1 cái để bật kill aura"
 })
 
 -- Hiển thị trạng thái hiện tại
-local statusLabel = InfoTab:CreateLabel("Trạng thái Kill Aura: " .. (getgenv().Config.Farm and "BẬT" or "TẮT"))
-local rangeLabel = InfoTab:CreateLabel("Tầm đánh hiện tại: " .. getgenv().Config.Range)
-local speedLabel = InfoTab:CreateLabel("Speed hiện tại: " .. getgenv().Config.Speed)
-local noclipLabel = InfoTab:CreateLabel("Noclip: " .. (getgenv().Config.Noclip and "BẬT" or "TẮT"))
+local statusLabel = InfoTab:CreateLabel("Trạng thái Kill Aura: TẮT")
+local autoHitLabel = InfoTab:CreateLabel("Auto Sửa Cửa: TẮT")
+local rangeLabel = InfoTab:CreateLabel("Tầm đánh hiện tại: 25")
+local speedLabel = InfoTab:CreateLabel("Tốc độ di chuyển: 16")
+local attackSpeedLabel = InfoTab:CreateLabel("Tốc độ Kill Aura: 0.1s")
+local noclipLabel = InfoTab:CreateLabel("Noclip: TẮT")
+local intervalLabel = InfoTab:CreateLabel("Tốc Độ Sửa Cửa: 1s")
 
--- LOGIC 
+-- LOGIC HỆ THỐNG 
 local LP = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local ZAP_REMOTE = game:GetService("ReplicatedStorage"):WaitForChild("ZAP"):WaitForChild("ZAP_RELIABLE")
+local MONSTERS = game.Workspace:WaitForChild("Monsters")
+local Defenses = workspace:WaitForChild("Defenses")
+local ATTACK_BUFFER = buffer.fromstring("\027\001\000\000\000\001")
 
--- Cập nhật tốc độ và noclip
+-- Tốc độ và Noclip
 RunService.Stepped:Connect(function()
     if LP.Character and LP.Character:FindFirstChild("Humanoid") then
         LP.Character.Humanoid.WalkSpeed = getgenv().Config.Speed
-        
-        -- Speed
-        if speedLabel then
-            speedLabel:SetText("Tốc độ hiện tại: " .. getgenv().Config.Speed)
-        end
-        
         if getgenv().Config.Noclip then
             for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                end
+                if v:IsA("BasePart") then v.CanCollide = false end
             end
         end
     end
 end)
 
--- Hook remote để lấy ID
-local ZAP_REMOTE = game:GetService("ReplicatedStorage"):WaitForChild("ZAP"):WaitForChild("ZAP_RELIABLE")
-local ATTACK_BUFFER = buffer.fromstring("\027\001\000\000\000\001")
-local old
-old = hookmetamethod(game, "__namecall", function(self, ...)
+-- Lấy ID Vũ Khí
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
     if self == ZAP_REMOTE and getnamecallmethod() == "FireServer" then
-        local b = ({...})[1]
-        if typeof(b) == "buffer" and buffer.len(b) >= 6 then
-            getgenv().Config.ID = buffer.readu8(b, 5)
+        local b = args[1]
+        if typeof(b) == "buffer" and buffer.readu8(b, 0) == 27 then
+            local weaponID = buffer.readu8(b, 5)
+            if getgenv().Config.SavedID ~= weaponID then
+                getgenv().Config.SavedID = weaponID
+                buffer.writeu8(ATTACK_BUFFER, 5, weaponID)
+            end
         end
     end
-    return old(self, ...)
+    return oldNamecall(self, ...)
 end)
 
--- Kill Aura Logic
-task.spawn(function()
-    while task.wait(0.1) do
-        if getgenv().Config.Farm and getgenv().Config.ID and LP.Character then
-            local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                for _, m in pairs(workspace.Monsters:GetChildren()) do
-                    if m:FindFirstChild("HumanoidRootPart") and (hrp.Position - m.HumanoidRootPart.Position).Magnitude <= getgenv().Config.Range then
-                        buffer.writeu8(ATTACK_BUFFER, 5, getgenv().Config.ID)
-                        ZAP_REMOTE:FireServer(ATTACK_BUFFER, {m})
-                    end
+-- Vòng lặp Farm 
+local lastAttack = 0
+RunService.Heartbeat:Connect(function()
+    if not getgenv().Config.Farm or not getgenv().Config.SavedID then return end
+    if tick() - lastAttack < getgenv().Config.AttackSpeed then return end
+
+    local char = LP.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local targets = {}
+    for _, monster in pairs(MONSTERS:GetChildren()) do
+        if monster:IsA("Model") and monster:FindFirstChild("HumanoidRootPart") then
+            local hum = monster:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local dist = (hrp.Position - monster.HumanoidRootPart.Position).Magnitude
+                if dist <= getgenv().Config.Range then
+                    table.insert(targets, monster)
                 end
             end
         end
-        
-        -- Cập nhật nhãn trạng thái real time
-        if statusLabel then
-            statusLabel:SetText("Trạng thái Kill Aura: " .. (getgenv().Config.Farm and "BẬT" or "TẮT"))
+    end
+
+    if #targets > 0 then
+        lastAttack = tick()
+        ZAP_REMOTE:FireServer(ATTACK_BUFFER, targets) -- Gửi 1 lần cho tất cả
+    end
+end)
+
+-- LOGIC AUTO Sửa cửa
+local ACTIVE_SLOT = 1
+local lastAutoHit = 0
+
+local function hit(target)
+    ZAP_REMOTE:FireServer(
+        buffer.fromstring("\031\001"),
+        {{
+            defenses = { target },
+            activeSlot = ACTIVE_SLOT
+        }}
+    )
+end
+
+local function getAllTargets()
+    local list = {}
+    for _, v in ipairs(Defenses:GetDescendants()) do
+        if v.Name == "Barrier" or v.Name == "Door" then
+            table.insert(list, v)
         end
-        
-        if noclipLabel then
-            noclipLabel:SetText("Noclip: " .. (getgenv().Config.Noclip and "BẬT" or "TẮT"))
-        end
-        
-        if rangeLabel then
-            rangeLabel:SetText("Tầm đánh hiện tại: " .. getgenv().Config.Range)
+    end
+    return list
+end
+
+RunService.Heartbeat:Connect(function()
+    if not getgenv().Config.AutoHit then return end
+    if tick() - lastAutoHit < getgenv().Config.AutoHitInterval then return end
+    
+    local targets = getAllTargets()
+    if #targets > 0 then
+        lastAutoHit = tick()
+        for _, obj in ipairs(targets) do
+            task.spawn(function()
+                hit(obj)
+            end)
         end
     end
 end)
 
--- Thông báo khởi động thành công
+task.spawn(function()
+    while task.wait(0.5) do
+        statusLabel:SetText("Kill Aura: " .. (getgenv().Config.Farm and "BẬT" or "TẮT"))
+        autoHitLabel:SetText("Auto Hit Barrier/Door: " .. (getgenv().Config.AutoHit and "BẬT" or "TẮT"))
+        noclipLabel:SetText("Noclip: " .. (getgenv().Config.Noclip and "BẬT" or "TẮT"))
+        rangeLabel:SetText("Tầm đánh hiện tại: " .. getgenv().Config.Range)
+        speedLabel:SetText("Tốc độ di chuyển: " .. getgenv().Config.Speed)
+        attackSpeedLabel:SetText("Tốc độ tấn công: " .. getgenv().Config.AttackSpeed .. "s")
+        intervalLabel:SetText("Auto Hit Interval: " .. getgenv().Config.AutoHitInterval .. "s")
+    end
+end)
+
 Rayfield:Notify({
-    Title = "Hentaiz.com",
-    Content = "Xem hentai đê",
+    Title = "QuanLorZ",
+    Content = ".",
     Duration = 4,
     Image = 4483362458
 })
