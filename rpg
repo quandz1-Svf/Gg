@@ -4,134 +4,125 @@ local LP = Players.LocalPlayer
 local PG = LP:WaitForChild("PlayerGui")
 
 --// CLEAN UP
-if PG:FindFirstChild("SwordSpam_NonStop_V8") then
-    PG:FindFirstChild("SwordSpam_NonStop_V8"):Destroy()
+if PG:FindFirstChild("SwordSpam_AutoOff_V9") then
+    PG:FindFirstChild("SwordSpam_AutoOff_V9"):Destroy()
 end
 
---// GUI (Siêu nhỏ gọn)
+--// GUI SIÊU THU GỌN
 local gui = Instance.new("ScreenGui", PG)
-gui.Name = "SwordSpam_NonStop_V8"
+gui.Name = "SwordSpam_AutoOff_V9"
 gui.ResetOnSpawn = false
 
-local menuBtn = Instance.new("TextButton", gui)
-menuBtn.Size = UDim2.new(0, 60, 0, 25)
-menuBtn.Position = UDim2.new(0, 5, 0.4, 0)
-menuBtn.Text = "MENU"
-menuBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-menuBtn.TextColor3 = Color3.new(1, 1, 1)
-menuBtn.Draggable = true
-
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 210, 0, 270) 
-frame.Position = UDim2.new(0.5, -105, 0.5, -135)
+frame.Size = UDim2.new(0, 200, 0, 160) -- Cực kỳ nhỏ
+frame.Position = UDim2.new(0.5, -100, 0.5, -80)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 frame.Active = true
 frame.Draggable = true
 
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 25)
-title.Text = "NON-STOP SPAMMER V8"
+title.Size = UDim2.new(1, 0, 0, 20)
+title.Text = "AUTO-OFF SPAMMER"
 title.TextColor3 = Color3.new(1, 1, 1)
 title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-title.TextSize = 11
+title.TextSize = 10
 
 local box = Instance.new("TextBox", frame)
-box.Size = UDim2.new(1, -16, 0, 50)
-box.Position = UDim2.new(0, 8, 0, 35)
+box.Size = UDim2.new(1, -10, 0, 60)
+box.Position = UDim2.new(0, 5, 0, 25)
 box.MultiLine = true
 box.Text = ""
-box.PlaceholderText = "Xoá và dán thoải mái ở đây..."
+box.PlaceholderText = "Dán mã vào đây..."
 box.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 box.TextColor3 = Color3.new(1, 1, 1)
-box.TextWrapped = true
 box.TextSize = 10
+box.TextWrapped = true
 
--- ===== PRESET LIST (Giữ nguyên tiện ích) =====
-local presetList = Instance.new("ScrollingFrame", frame)
-presetList.Size = UDim2.new(1, -16, 0, 100)
-presetList.Position = UDim2.new(0, 8, 0, 90)
-presetList.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-presetList.CanvasSize = UDim2.new(0, 0, 10, 0)
-presetList.ScrollBarThickness = 2
-
-local uiList = Instance.new("UIListLayout", presetList)
-uiList.Padding = UDim.new(0, 3)
-
--- ===== CONTROLS =====
 local delayBox = Instance.new("TextBox", frame)
-delayBox.Size = UDim2.new(0.3, -10, 0, 22)
-delayBox.Position = UDim2.new(0, 8, 0, 200)
+delayBox.Size = UDim2.new(0.4, -5, 0, 25)
+delayBox.Position = UDim2.new(0, 5, 0, 90)
 delayBox.Text = "0.05"
 delayBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 delayBox.TextColor3 = Color3.new(1, 1, 1)
 
 local toggle = Instance.new("TextButton", frame)
-toggle.Size = UDim2.new(0.7, -10, 0, 22)
-toggle.Position = UDim2.new(0.3, 5, 0, 200)
+toggle.Size = UDim2.new(0.6, -10, 0, 25)
+toggle.Position = UDim2.new(0.4, 5, 0, 90)
 toggle.Text = "SPAM: OFF"
 toggle.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
 toggle.TextColor3 = Color3.new(1, 1, 1)
 
 local clear = Instance.new("TextButton", frame)
-clear.Size = UDim2.new(1, -16, 0, 25)
-clear.Position = UDim2.new(0, 8, 0, 230)
-clear.Text = "XOÁ TRỐNG BOX"
+clear.Size = UDim2.new(1, -10, 0, 25)
+clear.Position = UDim2.new(0, 5, 0, 120)
+clear.Text = "XOÁ TRỐNG (AUTO OFF)"
 clear.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 clear.TextColor3 = Color3.new(1, 1, 1)
 
---// LOGIC XỬ LÝ AN TOÀN TUYỆT ĐỐI
+--// LOGIC
 local running = false
 
-local function getArgsSafe(text)
-    if text == "" or #text < 2 then return nil end
-    
-    -- Cố gắng trích xuất bảng { ... }
-    local code = text:match("({%s*.*%s*})") 
+local function setOFF()
+    running = false
+    toggle.Text = "SPAM: OFF"
+    toggle.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
+end
+
+local function getArgs(text)
+    if text == "" or #text < 5 then return nil end
+    local code = text:match("({%s*.*%s*})")
     if not code then return nil end
-    
-    -- Kiểm tra xem loadstring có lỗi không
-    local func, err = loadstring("return " .. code)
-    if not func then return nil end -- Nếu đang xoá dở, func sẽ nil -> bỏ qua lượt này
-    
-    local ok, result = pcall(func)
-    if ok then return result end
+    local f = loadstring("return "..code)
+    if f then 
+        local ok, res = pcall(f)
+        if ok then return res end
+    end
     return nil
 end
 
+-- Tự động OFF khi xoá text
+box:GetPropertyChangedSignal("Text"):Connect(function()
+    if box.Text == "" and running then
+        setOFF()
+    end
+end)
+
+-- Tự động OFF khi đổi/bỏ vũ khí
+LP.Character.ChildRemoved:Connect(function(child)
+    if child:IsA("Tool") and running then
+        setOFF()
+    end
+end)
+
 toggle.MouseButton1Click:Connect(function()
+    if box.Text == "" then return end
     running = not running
     toggle.Text = running and "SPAM: ON" or "SPAM: OFF"
     toggle.BackgroundColor3 = running and Color3.fromRGB(0, 120, 0) or Color3.fromRGB(120, 0, 0)
 end)
 
-clear.MouseButton1Click:Connect(function() box.Text = "" end)
-menuBtn.MouseButton1Click:Connect(function() frame.Visible = not frame.Visible end)
+clear.MouseButton1Click:Connect(function()
+    box.Text = ""
+    setOFF()
+end)
 
---// VÒNG LẶP KHÔNG BAO GIỜ CHẾT
+--// VÒNG LẶP CHÍNH
 task.spawn(function()
     while true do
-        task.wait() -- Luôn chạy ngầm để đợi lệnh
-        
+        task.wait()
         if running then
-            -- 1. Tìm Remote mới nhất (phòng trường hợp đổi kiếm)
             local char = LP.Character
             local remote = char and char:FindFirstChild("SwordDamage")
+            local argsData = getArgs(box.Text)
             
-            -- 2. Lấy mã an toàn
-            local argsData = getArgsSafe(box.Text)
-            
-            -- 3. Chỉ bắn Remote khi có ĐỦ Remote và ĐỦ dữ liệu
-            if remote and argsData then
+            if not remote or not argsData then
+                setOFF() -- Nếu mất Remote (đổi kiếm) hoặc mất mã, tắt ngay!
+            else
                 pcall(function()
                     remote:FireServer(unpack(argsData))
                 end)
             end
-            
-            -- 4. Nghỉ theo delay đã chỉnh
             task.wait(tonumber(delayBox.Text) or 0.05)
-        else
-            -- Nếu tắt OFF, nghỉ lâu hơn một chút để tiết kiệm CPU
-            task.wait(0.2)
         end
     end
 end)
