@@ -8,7 +8,7 @@ local TradeRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net
 local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
 
 local MIN_LEVEL = 150
-local TRADE_DELAY = 8 -- Đã chỉnh thành 8 giây
+local TRADE_DELAY = 8 
 local TradeEnabled, IsTrading = false, false
 local TargetPlayer, SelectedPetName = nil, nil
 local CooldownTime = 0
@@ -19,13 +19,14 @@ local function UpdateWhitelist()
     if success then
         Whitelist = {}
         for line in content:gmatch("[^\r\n]+") do
-            table.insert(Whitelist, line:gsub("^%s*(.-)%s*$", "%1"):lower())
+            local cleanName = line:gsub("^%s*(.-)%s*$", "%1"):lower()
+            if cleanName ~= "" then table.insert(Whitelist, cleanName) end
         end
     end
 end
 
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "RGB_Mobile_Pro_V5"
+gui.Name = "RGB_Mobile_Pro_V6_Fixed"
 gui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame", gui)
@@ -44,14 +45,13 @@ local TitleBar = Instance.new("TextButton", MainFrame)
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 TitleBar.AutoButtonColor = false
-TitleBar.Text = " Bố Mày Là Số 1 (V6) "
+TitleBar.Text = " Bố Mày Là Số 1 (Fixed Select) "
 TitleBar.Font = Enum.Font.GothamBold
 TitleBar.TextSize = 14
 TitleBar.TextColor3 = Color3.new(1, 1, 1)
 TitleBar.TextXAlignment = Enum.TextXAlignment.Left
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
 
--- Nút Xóa UI
 local CloseBtn = Instance.new("TextButton", MainFrame)
 CloseBtn.Size = UDim2.fromOffset(30, 30)
 CloseBtn.Position = UDim2.new(1, -35, 0, 5)
@@ -134,7 +134,7 @@ RunService.RenderStepped:Connect(function()
         timerLbl.Text = string.format("WAIT: %.1fs", CooldownTime)
         timerLbl.TextColor3 = Color3.new(1, 0.4, 0.4)
     else
-        timerLbl.Text = TargetPlayer and "TARGET OK" or "NO TARGET"
+        timerLbl.Text = TargetPlayer and "TARGET: OK" or "NO TARGET"
         timerLbl.TextColor3 = TargetPlayer and Color3.new(0.4, 1, 0.4) or Color3.new(1, 0.5, 0)
     end
 end)
@@ -163,32 +163,60 @@ makeDraggable(floatBtn)
 
 local function refreshPlayers()
     UpdateWhitelist()
-    TargetPlayer = nil
     for _, v in ipairs(PlayerSide:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    
+    -- Tự động quét để gán TargetPlayer ban đầu từ whitelist nếu chưa chọn ai
+    if not TargetPlayer then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                for _, name in ipairs(Whitelist) do
+                    if plr.Name:lower() == name or (plr.DisplayName and plr.DisplayName:lower() == name) then
+                        TargetPlayer = plr
+                        break
+                    end
+                end
+            end
+        end
+    end
+
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             local isWhitelisted = false
             for _, name in ipairs(Whitelist) do
                 if plr.Name:lower() == name or (plr.DisplayName and plr.DisplayName:lower() == name) then
                     isWhitelisted = true
-                    TargetPlayer = plr
                     break
                 end
             end
+            
+            local isSelected = (TargetPlayer == plr)
             local b = Instance.new("TextButton", PlayerSide)
             b.Size = UDim2.new(0.95, 0, 0, 35)
-            b.Text = (isWhitelisted and "⭐ " or "") .. plr.DisplayName
-            b.Font = isWhitelisted and Enum.Font.GothamBold or Enum.Font.Gotham
-            b.BackgroundColor3 = isWhitelisted and Color3.fromRGB(40, 40, 20) or Color3.fromRGB(30, 30, 30)
+            
+            -- Hiển thị: Nếu là whitelist thì hiện sao ⭐, nếu đang được chọn thì hiện tích ✅
+            local prefix = ""
+            if isWhitelisted then prefix = "⭐ " end
+            if isSelected then prefix = "✅ " .. prefix end
+            
+            b.Text = prefix .. plr.DisplayName
+            b.Font = (isWhitelisted or isSelected) and Enum.Font.GothamBold or Enum.Font.Gotham
+            b.BackgroundColor3 = isSelected and Color3.fromRGB(40, 60, 40) or (isWhitelisted and Color3.fromRGB(40, 40, 20) or Color3.fromRGB(30, 30, 30))
             b.TextColor3 = Color3.new(1, 1, 1)
             b.BorderSizePixel = 0
             Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-            if isWhitelisted then
+            
+            -- Khung LED sáng cho người được chọn hoặc whitelist
+            if isSelected or isWhitelisted then
                 local s = Instance.new("UIStroke", b)
                 s.Thickness = 2
                 s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 ledList[s] = true
             end
+
+            b.MouseButton1Click:Connect(function()
+                TargetPlayer = (TargetPlayer == plr) and nil or plr
+                refreshPlayers()
+            end)
         end
     end
     PlayerSide.CanvasSize = UDim2.new(0, 0, 0, PlayerSide.UIListLayout.AbsoluteContentSize.Y + 10)
@@ -271,7 +299,6 @@ task.spawn(function()
                         local tName = t:GetAttribute("BrainrotName") or t.Name
                         if tName == name then count += 1 end
                     end
-                    -- ĐIỀU KIỆN: Nếu số lượng > 1 mới trade (giữ lại đúng 1 con)
                     if count > 1 then 
                         targetPet = tool 
                         break 
