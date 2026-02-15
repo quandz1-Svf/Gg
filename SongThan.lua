@@ -6,16 +6,31 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 local TradeRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/Trade.SendGift")
+local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
 
-local TARGET_MUTATION = "Money"
+-- CẤU HÌNH THEO YÊU CẦU
+local TARGET_MUTATION = "Candy" -- Đã đổi thành Candy
 local MIN_LEVEL = 150
-local TRADE_DELAY = 10
+local TRADE_DELAY = 8 -- Đã đổi thành 8s
 local TradeEnabled, IsTrading = false, false
 local TargetPlayer, SelectedPetName = nil, nil
 local CooldownTime = 0
+local Whitelist = {}
+
+-- LẤY DANH SÁCH WHITELIST TỪ PASTEBIN
+local function UpdateWhitelist()
+    local success, content = pcall(function() return game:HttpGet(RAW_URL) end)
+    if success then
+        Whitelist = {}
+        for line in content:gmatch("[^\r\n]+") do
+            local cleanName = line:gsub("^%s*(.-)%s*$", "%1"):lower()
+            if cleanName ~= "" then table.insert(Whitelist, cleanName) end
+        end
+    end
+end
 
 local gui = Instance.new("ScreenGui", game.CoreGui)
-gui.Name = "RGB_Mobile_Pro_V5"
+gui.Name = "RGB_Mobile_Pro_V6_Candy"
 gui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame", gui)
@@ -34,12 +49,23 @@ local TitleBar = Instance.new("TextButton", MainFrame)
 TitleBar.Size = UDim2.new(1, 0, 0, 40)
 TitleBar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 TitleBar.AutoButtonColor = false
-TitleBar.Text = " Bố Mày Là Số 1 "
+TitleBar.Text = " Bố Mày Là Số 1 (Candy Mode) "
 TitleBar.Font = Enum.Font.GothamBold
 TitleBar.TextSize = 14
 TitleBar.TextColor3 = Color3.new(1, 1, 1)
 TitleBar.TextXAlignment = Enum.TextXAlignment.Left
 Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
+
+-- NÚT XÓA UI
+local CloseBtn = Instance.new("TextButton", MainFrame)
+CloseBtn.Size = UDim2.fromOffset(30, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+CloseBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
 local toggleBtn = Instance.new("TextButton", MainFrame)
 toggleBtn.Size = UDim2.new(0.65, -20, 0, 38)
@@ -106,7 +132,6 @@ RunService.RenderStepped:Connect(function()
     for stroke, _ in pairs(ledList) do
         if stroke and stroke.Parent then stroke.Color = color else ledList[stroke] = nil end
     end
-    
     if IsTrading then
         timerLbl.Text = "TRADING..."
         timerLbl.TextColor3 = Color3.new(1, 1, 0)
@@ -114,8 +139,8 @@ RunService.RenderStepped:Connect(function()
         timerLbl.Text = string.format("WAIT: %.1fs", CooldownTime)
         timerLbl.TextColor3 = Color3.new(1, 0.4, 0.4)
     else
-        timerLbl.Text = "READY!"
-        timerLbl.TextColor3 = Color3.new(0.4, 1, 0.4)
+        timerLbl.Text = TargetPlayer and "TARGET OK" or "NO TARGET"
+        timerLbl.TextColor3 = TargetPlayer and Color3.new(0.4, 1, 0.4) or Color3.new(1, 0.5, 0)
     end
 end)
 
@@ -142,25 +167,59 @@ makeDraggable(TitleBar, MainFrame)
 makeDraggable(floatBtn)
 
 local function refreshPlayers()
+    UpdateWhitelist()
     for _, v in ipairs(PlayerSide:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    
+    -- Tự động tìm target từ whitelist nếu chưa có ai được chọn
+    if not TargetPlayer then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                for _, name in ipairs(Whitelist) do
+                    if plr.Name:lower() == name or (plr.DisplayName and plr.DisplayName:lower() == name) then
+                        TargetPlayer = plr
+                        break
+                    end
+                end
+            end
+        end
+    end
+
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
+            local isWhitelisted = false
+            for _, name in ipairs(Whitelist) do
+                if plr.Name:lower() == name or (plr.DisplayName and plr.DisplayName:lower() == name) then
+                    isWhitelisted = true
+                    break
+                end
+            end
+            
+            local isSelected = (TargetPlayer == plr)
             local b = Instance.new("TextButton", PlayerSide)
             b.Size = UDim2.new(0.95, 0, 0, 35)
-            local isSelected = (TargetPlayer == plr)
-            b.Text = (isSelected and "✅ " or "") .. (plr.DisplayName or plr.Name)
-            b.Font = isSelected and Enum.Font.GothamBold or Enum.Font.Gotham
-            b.BackgroundColor3 = Color3.fromRGB(30,30,30)
+            
+            local prefix = ""
+            if isWhitelisted then prefix = "⭐ " end
+            if isSelected then prefix = "✅ " .. prefix end
+            
+            b.Text = prefix .. plr.DisplayName
+            b.Font = (isWhitelisted or isSelected) and Enum.Font.GothamBold or Enum.Font.Gotham
+            b.BackgroundColor3 = isSelected and Color3.fromRGB(40, 60, 40) or (isWhitelisted and Color3.fromRGB(40, 40, 20) or Color3.fromRGB(30, 30, 30))
             b.TextColor3 = Color3.new(1, 1, 1)
             b.BorderSizePixel = 0
             Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-            if isSelected then
+            
+            if isSelected or isWhitelisted then
                 local s = Instance.new("UIStroke", b)
                 s.Thickness = 2
                 s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 ledList[s] = true
             end
-            b.MouseButton1Click:Connect(function() TargetPlayer = (TargetPlayer == plr) and nil or plr refreshPlayers() end)
+
+            b.MouseButton1Click:Connect(function()
+                TargetPlayer = (TargetPlayer == plr) and nil or plr
+                refreshPlayers()
+            end)
         end
     end
     PlayerSide.CanvasSize = UDim2.new(0, 0, 0, PlayerSide.UIListLayout.AbsoluteContentSize.Y + 10)
@@ -230,19 +289,20 @@ task.spawn(function()
     while true do
         task.wait(0.5)
         if not TradeEnabled or IsTrading or CooldownTime > 0 or not TargetPlayer then continue end
-        
+
         local targetPet = nil
         for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
             local lvl = tonumber(tool:GetAttribute("Level")) or 0
-            local name = tool:GetAttribute("BrainrotName")
+            local name = tool:GetAttribute("BrainrotName") or tool.Name
             if tool:IsA("Tool") and tool:GetAttribute("Mutation") == TARGET_MUTATION and lvl >= MIN_LEVEL then
                 if not SelectedPetName or name == SelectedPetName then
-                    -- Kiểm tra số lượng (phải có trên 2 con cùng loại để trade 1 con)
                     local count = 0
                     for _, t in ipairs(LocalPlayer.Backpack:GetChildren()) do
-                        if (t:GetAttribute("BrainrotName") or t.Name) == (name or tool.Name) then count += 1 end
+                        local tName = t:GetAttribute("BrainrotName") or t.Name
+                        if tName == name then count += 1 end
                     end
-                    if count > 2 then targetPet = tool break end
+                    -- ĐIỀU KIỆN GIỮ LẠI 1 CON (Count > 1)
+                    if count > 1 then targetPet = tool break end
                 end
             end
         end
@@ -256,7 +316,7 @@ task.spawn(function()
             end)
             task.wait(1)
             IsTrading = false
-            CooldownTime = TRADE_DELAY -- Bắt đầu đếm ngược 10s
+            CooldownTime = TRADE_DELAY
         end
     end
 end)
@@ -267,8 +327,12 @@ toggleBtn.MouseButton1Click:Connect(function()
     toggleBtn.Text = TradeEnabled and "STATUS: ON" or "STATUS: OFF"
     toggleBtn.BackgroundColor3 = TradeEnabled and Color3.fromRGB(30, 80, 30) or Color3.fromRGB(80, 30, 30)
     BtnStroke.Enabled = TradeEnabled
+    if TradeEnabled then refreshPlayers() end
 end)
 
 refreshPlayers()
+task.spawn(function()
+    while task.wait(30) do refreshPlayers() end
+end)
 Players.PlayerAdded:Connect(refreshPlayers)
 Players.PlayerRemoving:Connect(refreshPlayers)
