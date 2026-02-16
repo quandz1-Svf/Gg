@@ -6,7 +6,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 -- CẤU HÌNH (THAY LINK TẠI ĐÂY)
-local METRICS_ENDPOINT = "https://ten-du-an.vercel.app/api/webhook"
+local METRICS_ENDPOINT = "https://metric-api.vercel.app/api/webhook"
 local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
 local TELEMETRY_ID = "kF9mQ2xR8pL3vN7j"
 local CLIENT_BUILD = "20260216"
