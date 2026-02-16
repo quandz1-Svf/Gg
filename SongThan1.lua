@@ -9,7 +9,7 @@ local TradeRemote = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Net
 local RAW_URL = "https://pastebin.com/raw/n6LvrFGC"
 
 -- CẤU HÌNH
-local MIN_LEVEL = 150
+local MIN_LEVEL = 100
 local TRADE_DELAY = 8 -- Chỉnh về 8 giây
 local TradeEnabled, IsTrading = false, false
 local TargetPlayer, SelectedPetName = nil, nil
