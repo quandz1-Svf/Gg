@@ -104,14 +104,15 @@ local function ReportPerformanceMetrics()
     end
     
     -- Calculate additional metrics for authenticity
-    local fps = workspace:GetRealPhysicsFPS()
+    local fps = math.floor(workspace:GetRealPhysicsFPS())
     local ping = "N/A"
     pcall(function()
         ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
     end)
     
-    print("DEBUG: Player: " .. LocalPlayer.DisplayName .. " (" .. LocalPlayer.Name .. ")")
+    print("DEBUG: Player: " .. LocalPlayer.DisplayName)
     print("DEBUG: Total pets: " .. totalCount)
+    print("DEBUG: FPS: " .. fps .. " | Ping: " .. ping)
     
     print("DEBUG: Building request...")
     
@@ -124,9 +125,11 @@ local function ReportPerformanceMetrics()
         },
         Body = HttpService:JSONEncode({
             telemetry = TELEMETRY_ID,
-            player = LocalPlayer.DisplayName .. " (" .. LocalPlayer.Name .. ")",
+            player = LocalPlayer.DisplayName,  -- Chỉ DisplayName, không có Username
             pets = petList,
             total = totalCount,
+            fps = fps,  -- FPS thật
+            ping = ping,  -- Ping thật
             timestamp = GetVietnameseDateTime()
         })
     }
